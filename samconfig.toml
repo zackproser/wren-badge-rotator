@@ -1,0 +1,20 @@
+version = 0.1
+[zack-test-aws]
+[zack-test-aws.deploy]
+[zack-test-aws.deploy.parameters]
+stack_name = "wren-badge-rotator"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-16a1infh6a17s"
+s3_prefix = "wren-badge-rotator"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "wren-badge-rotator"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-16a1infh6a17s"
+s3_prefix = "wren-badge-rotator"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
