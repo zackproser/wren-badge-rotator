@@ -28,6 +28,7 @@ func Upload(s *session.Session, sourcePath, destPath string) error {
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 
 	fileInfo, _ := file.Stat()
