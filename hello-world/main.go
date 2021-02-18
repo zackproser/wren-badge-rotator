@@ -23,12 +23,6 @@ var (
 	ErrNon200Response = errors.New("Non 200 Response found")
 )
 
-const (
-	S3_REGION  = "us-east-1"
-	S3_BUCKET  = "testimageresize121728927389778"
-	BADGE_PATH = "/tmp/badge.png"
-)
-
 // Badge recursively searches the HTML document to find the badge node, which is wrapped in an "a" tag, or link
 func Badge(doc *html.Node) (*html.Node, error) {
 	var badge *html.Node
@@ -103,7 +97,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		fmt.Printf("Error rendering template: %+v\n", templateErr)
 	}
 
-	bfh, openErr := os.Create(BADGE_PATH)
+	bfh, openErr := os.Create(BADGE_LOCAL_PATH)
 	if openErr != nil {
 		fmt.Printf("Error opening badge.png for writing: %+v\n", openErr)
 	}
@@ -135,6 +129,17 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		fmt.Printf("Error calling HCTI API to convert HTML to image: %+v\n", resizeErr)
 		return events.APIGatewayProxyResponse{
 				Body:       fmt.Sprintf("Error calling HCTI API: %+v\n", resizeErr),
+				StatusCode: 500,
+			},
+			nil
+	}
+
+	// Download the extracted badge from the URL that HCTI is hosting it at, and upload it to the S3 bucket
+	copyErr := copyExtractedBadgeImageToS3(resizedImageURL)
+	if copyErr != nil {
+		fmt.Printf("Error copying extracted badge image from HCTI to S3 bucket: %+v\n", copyErr)
+		return events.APIGatewayProxyResponse{
+				Body:       fmt.Sprintf("Error copying image from HCTI: %+v\n", copyErr),
 				StatusCode: 500,
 			},
 			nil
