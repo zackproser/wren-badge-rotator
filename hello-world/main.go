@@ -145,6 +145,16 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			nil
 	}
 
+	updateErr := updateBadgeImage()
+	if updateErr != nil {
+		fmt.Printf("Error updating wren badge via git: %+v\n", updateErr)
+		return events.APIGatewayProxyResponse{
+				Body:       fmt.Sprintf("Error updating wren badge: %+v\n", updateErr),
+				StatusCode: 500,
+			},
+			nil
+	}
+
 	// At this point, all processing steps have completed successfully, without error, so return a success response
 	return events.APIGatewayProxyResponse{
 			Body:       "Finished processing without error",

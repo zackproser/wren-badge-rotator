@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/v32/github"
 	"golang.org/x/oauth2"
 )
@@ -104,7 +106,7 @@ func checkoutLocalBranch(ref *plumbing.Reference, worktree *git.Worktree, localR
 
 // commitLocalChanges will create a commit using the supplied or default commit message and will add any untracked, deleted
 // or modified files that resulted from script execution
-func commitLocalChanges(worktree *git.Worktree, localRepository *git.Repository) error {
+func commitLocalChanges(worktree *git.Worktree, localRepository *git.Repository, repositoryDir string) error {
 
 	t := time.Now()
 	month := t.Month()
@@ -116,6 +118,11 @@ func commitLocalChanges(worktree *git.Worktree, localRepository *git.Repository)
 	// will have their changes committed
 	commitOps := &git.CommitOptions{
 		All: true,
+		Author: &object.Signature{
+			Name:  "Zack Proser",
+			Email: "zackproser@gmail.com",
+			When:  time.Now(),
+		},
 	}
 
 	_, commitErr := worktree.Commit(commitMessage, commitOps)
@@ -133,10 +140,15 @@ func pushLocalBranch(localRepository *git.Repository) error {
 	// Push the changes to the remote repo
 	po := &git.PushOptions{
 		RemoteName: "origin",
+		Auth: &http.BasicAuth{
+			Username: "zackproser",
+			Password: os.Getenv("GITHUB_OAUTH_TOKEN"),
+		},
 	}
 	pushErr := localRepository.Push(po)
 
 	if pushErr != nil {
+		fmt.Println("Error pushing local branch to remote")
 		return pushErr
 	}
 
@@ -179,30 +191,32 @@ func openPullRequest(GithubClient *github.Client, branch string) error {
 
 func updateBadgeContents(repositoryDir string) error {
 
-	badgePath := path.Join(repositoryDir, "img")
+	badgePath := path.Join(repositoryDir, "img", "carbon-wren.png")
 
-	targetBadgeFile, err := os.Create(badgePath)
-
-	if err != nil {
-		return err
-	}
-
-	defer targetBadgeFile.Close()
-
-	updatedBadgeFile, err := os.Open(EXTRACTED_BADGE_IMAGE_LOCAL_PATH)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(targetBadgeFile, updatedBadgeFile)
+	// Overwrite the existing local repo's copy of the previous badge with the freshly extracted and updated badge
+	cmd := exec.Command("cp", EXTRACTED_BADGE_IMAGE_LOCAL_PATH, badgePath)
+	stdout, err := cmd.Output()
 
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("cp updated badge into place output: %s\n", string(stdout))
 
 	return nil
 }
 
+// updateBadgeImage wraps all the operations that need to occur in order to update the badge image on my Github profile:
+// 1. Clone the zackproser/zackproser repository to a local /tmp directory
+// 2. Get the HEAD ref from that repository for use in branching
+// 3. Get the local worktree of that repository for use in commiting changes
+// 4. Checkout a new local branch specific to the month the update is being run in
+// 5. Overwrite the badge image contents that are currently in the Github repository's img directory with the contents
+// of the badge that have now been scraped from wren and then processed into an image via the HCTI API and then
+// stored under the /extracted prefix within the S3 bucket
+// 6. Commit this file change, using my own signature
+// 7. Push the local branch to the remote origin, using my Github personal access token and HTTP basic auth as transport.Auth scheme
+// 8. Using my Github personal access token, obtain a Github API client and make a call to create a Pull Request
 func updateBadgeImage() error {
 
 	repositoryDir, localRepository, cloneErr := cloneRepo()
@@ -210,6 +224,8 @@ func updateBadgeImage() error {
 	if cloneErr != nil {
 		return cloneErr
 	}
+
+	fmt.Printf("Local repository cloned to: %s\n", repositoryDir)
 
 	ref, headRefErr := getLocalRepoHeadRef(localRepository)
 
@@ -235,7 +251,7 @@ func updateBadgeImage() error {
 		return updateErr
 	}
 
-	commitErr := commitLocalChanges(worktree, localRepository)
+	commitErr := commitLocalChanges(worktree, localRepository, repositoryDir)
 	if commitErr != nil {
 		return commitErr
 	}
