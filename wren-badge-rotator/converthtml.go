@@ -11,21 +11,19 @@ import (
 	"time"
 )
 
-const (
-	S3_BADGE_PATH = "https://testimageresize121728927389778.s3.amazonaws.com/badge.html"
-	HCTL_API_URL  = "https://hcti.io/v1/image"
-)
-
 type HCTIResponse struct {
 	URL string `json:"url"`
 }
 
+// resizePostedBadge makes an API call to the HCTI API, passing it the URL of the S3-hosted badge.html file
+// HCTI will return a URL at which it is hosting the extracted badge image
 func resizePostedBadge() (string, error) {
 	// Sanity-check that the required HCTL env vars are set
 	if os.Getenv("HCTI_USER_ID") == "" || os.Getenv("HCTI_API_KEY") == "" {
 		return "", errors.New("HCTI_USER_ID and HCTI_API_KEY env vars are required")
 	}
 
+	// Set parameters to pass to the HCTI API
 	data := map[string]string{
 		"url":             S3_BADGE_PATH,
 		"viewport_width":  "300",

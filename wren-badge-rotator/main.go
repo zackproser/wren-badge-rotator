@@ -17,10 +17,17 @@ import (
 )
 
 var (
-	WrenBadgeURL = "https://www.wren.co/badge/logo/zackproser"
-
 	// ErrNon200Response non 200 status code in response
-	ErrNon200Response = errors.New("Non 200 Response found")
+	ErrNon200Response                = errors.New("Non 200 Response found")
+	WrenBadgeURL                     = fmt.Sprintf("https://www.wren.co/badge/logo/%s", os.Getenv("WREN_USERNAME"))
+	S3_REGION                        = os.Getenv("AWS_REGION")
+	S3_BUCKET                        = os.Getenv("S3_BUCKET")
+	BADGE_LOCAL_PATH                 = "/tmp/badge.png"
+	HTML_PAGE_DEST_PATH              = "badge.html"
+	EXTRACTED_BADGE_IMAGE_LOCAL_PATH = "/tmp/extracted-badge.png"
+	EXTRACTED_BADGE_IMAGE_S3_PATH    = "/extracted/badge.png"
+	S3_BADGE_PATH                    = fmt.Sprintf("https://%s.s3.amazonaws.com/badge.html", S3_BUCKET)
+	HCTL_API_URL                     = "https://hcti.io/v1/image"
 )
 
 // Badge recursively searches the HTML document to find the badge node, which is wrapped in an "a" tag, or link
@@ -52,6 +59,15 @@ func renderNode(n *html.Node) string {
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	err := sanityCheckEnvVars()
+	if err != nil {
+		return events.APIGatewayProxyResponse{
+				Body:       "You must define HCTI_API_KEY, HCTI_USER_NAME, and GITHUB_OAUTH_TOKEN env vars",
+				StatusCode: 400,
+			},
+			nil
+	}
+
 	resp, err := http.Get(WrenBadgeURL)
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err

@@ -13,15 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-const (
-	S3_REGION                        = "us-east-1"
-	S3_BUCKET                        = "testimageresize121728927389778"
-	BADGE_LOCAL_PATH                 = "/tmp/badge.png"
-	HTML_PAGE_DEST_PATH              = "badge.html"
-	EXTRACTED_BADGE_IMAGE_LOCAL_PATH = "/tmp/extracted-badge.png"
-	EXTRACTED_BADGE_IMAGE_S3_PATH    = "/extracted/badge.png"
-)
-
 func Upload(s *session.Session, sourcePath, destPath string) error {
 
 	file, err := os.Open(sourcePath)

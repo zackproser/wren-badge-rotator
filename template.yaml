@@ -4,6 +4,27 @@ Description: >
   wren-badge-rotator
 
 Resources:
+  WrenBadgeImageResizeBucket:
+    Type: AWS::S3::Bucket
+
+  WrenBadgeImageResizeBucketAllowPublicReadPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WrenBadgeImageResizeBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "s3:GetObject"
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref WrenBadgeImageResizeBucket
+                  - /*
+            Principal: "*"
+
   WrenBadgeRotatorFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -18,6 +39,10 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: cron(0 8 2 * ? *)
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref WrenBadgeImageResizeBucket
+          WREN_USERNAME: zackproser
 
   WrenBadgeRotatorFunctionS3BucketPolicy:
     Type: AWS::IAM::Policy
@@ -29,7 +54,12 @@ Resources:
           - Effect: Allow
             Action:
               - 's3:*'
-            Resource: "arn:aws:s3:::testimageresize121728927389778/*"
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref WrenBadgeImageResizeBucket
+                  - /*
       Roles:
         - !Ref WrenBadgeRotatorFunctionRole
 
