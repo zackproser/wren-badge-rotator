@@ -2,42 +2,41 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   wren-badge-rotator
-  
-  Sample SAM Template for wren-badge-rotator
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-Globals:
-  Function:
-    Timeout: 5
 
 Resources:
-  HelloWorldFunction:
+  WrenBadgeRotatorFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
-      CodeUri: hello-world/
-      Handler: hello-world
+      CodeUri: wren-badge-rotator/
+      Handler: wren-badge-rotator
       Runtime: go1.x
-      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      Description: A lambda function that scrapes, processes, and updates my Wren.co badge on my Github profile
+      # Allow a timeout of 15 minutes, the maximum supported by lambda, even though we won't need that much time
+      Timeout: 900
       Events:
-        CatchAll:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        SimpleCWEEvent:
+          Type: Schedule
           Properties:
-            Path: /hello
-            Method: GET
-      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-        Variables:
-          PARAM1: VALUE
+            Schedule: cron(0 8 2 * ? *)
+
+  WrenBadgeRotatorFunctionS3BucketPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ManageImageResizeS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:*'
+            Resource: "arn:aws:s3:::testimageresize121728927389778/*"
+      Roles:
+        - !Ref WrenBadgeRotatorFunctionRole
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldAPI:
-    Description: "API Gateway endpoint URL for Prod environment for First Function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "First Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  WrenBadgeRotatorFunction:
+    Description: "Lambda function ARN"
+    Value: !GetAtt WrenBadgeRotatorFunction.Arn
+  WrenbadgeRotatorFunctionIamRole:
+    Description: "Implicit IAM Role created for the badge rotator function"
+    Value: !GetAtt WrenBadgeRotatorFunctionRole.Arn
