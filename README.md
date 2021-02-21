@@ -2,6 +2,8 @@
 
 [Read the article](https://medium.com/) that provides a deep dive of this repo and the problem it is solving. 
 
+![Wren Badge Rotator](img/githb-profile.png)
+
 This is an AWS Lambda serverless function that is triggered by a CloudWatch event to run once per month. It updates my Wren.co badge on my Github profile with my latest stats 100% autonomously. 
 
 # Cloudformation

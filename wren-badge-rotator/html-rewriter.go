@@ -40,6 +40,8 @@ func renderNode(n *html.Node) string {
 	return buf.String()
 }
 
+// wrapper is a Golang template literal that is almost identical to the original page hosted by Wren.co displaying the badges
+// but it contains the CSS modifications I determined would style my badge the way I wanted it
 const wrapper = `
             <!doctype html>
             <html>

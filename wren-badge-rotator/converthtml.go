@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// HCTIResponse represents the format of the response from the image-resizing API, which will return a single field: "url"
 type HCTIResponse struct {
 	URL string `json:"url"`
 }

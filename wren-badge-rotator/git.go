@@ -143,7 +143,7 @@ func pushLocalBranch(localRepository *git.Repository) error {
 	po := &git.PushOptions{
 		RemoteName: "origin",
 		Auth: &http.BasicAuth{
-			Username: "zackproser",
+			Username: os.Getenv("REPO_OWNER"),
 			Password: os.Getenv("GITHUB_OAUTH_TOKEN"),
 		},
 	}
