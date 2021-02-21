@@ -44,7 +44,7 @@ Resources:
         Variables:
           S3_BUCKET: !Ref WrenBadgeImageResizeBucket
           WREN_USERNAME: zackproser
-          REPO_OWRNER: zackproser
+          REPO_OWNER: zackproser
 
   WrenBadgeRotatorFunctionS3BucketPolicy:
     Type: AWS::IAM::Policy
