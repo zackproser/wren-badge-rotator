@@ -18,10 +18,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const (
-	REPO_URL = "https://github.com/zackproser/zackproser.git"
-)
-
+// getGithubClient uses the Github personal access token defined as an environment variable to create a new Github API client
+// This client will be used to make the API call to Github to create the Pull Request updating the badge
 func getGithubClient() (*github.Client, error) {
 	if os.Getenv("GITHUB_OAUTH_TOKEN") == "" {
 		return nil, errors.New("You must set the GITHUB_OAUTH_TOKEN env var to a valid Github personal access token")
@@ -38,6 +36,9 @@ func getGithubClient() (*github.Client, error) {
 	return client, nil
 }
 
+// cloneRepo uses the go-git library to clone my Github profile repository to a newly created /tmp/directory
+// This way the badge image can be updated and committed in place, and pushed during execution, and it's fine for
+// everything else to be discarded following the lambda execution, since this function will tend to be run once per month on average
 func cloneRepo() (string, *git.Repository, error) {
 
 	repositoryDir, tmpDirErr := ioutil.TempDir("", "wren-badge-rotator")
@@ -83,9 +84,9 @@ func checkoutLocalBranch(ref *plumbing.Reference, worktree *git.Worktree, localR
 	t := time.Now()
 	month := t.Month()
 
+	// Create a branch name that contains the Month so that it's easier to scan and understand
 	branchNameWithMonth := fmt.Sprintf("update-wren-badge-%s", month)
 
-	// BranchName is a global variable that is set in cmd/root.go. It is override-able by the operator via the --branch-name or -b flag. It defaults to "multi-repo-script-runner"
 	branchName := plumbing.NewBranchReferenceName(branchNameWithMonth)
 	// Create a branch specific to the multi repo script runner
 	co := &git.CheckoutOptions{
@@ -104,16 +105,16 @@ func checkoutLocalBranch(ref *plumbing.Reference, worktree *git.Worktree, localR
 	return branchName, nil
 }
 
-// commitLocalChanges will create a commit using the supplied or default commit message and will add any untracked, deleted
-// or modified files that resulted from script execution
+// commitLocalChanges will commit the modified badge image to the local checkout of the repo so that it can be pushed to the remote origin next
 func commitLocalChanges(worktree *git.Worktree, localRepository *git.Repository, repositoryDir string) error {
 
 	t := time.Now()
 	month := t.Month()
 
+	// Create a commit message that contains the current month for easier scanning
 	commitMessage := fmt.Sprintf("Update Project Wren Badge with monthly stats for %s", month)
 
-	// With all our untracked files staged, we can now create a commit, passing the All
+	// We can now create a commit, passing the All
 	// option when configuring our commit option so that all modified and deleted files
 	// will have their changes committed
 	commitOps := &git.CommitOptions{
@@ -135,7 +136,8 @@ func commitLocalChanges(worktree *git.Worktree, localRepository *git.Repository,
 }
 
 // pushLocalBranch pushes the branch in the local clone of the /tmp/ directory repository to the Github remote origin
-// so that a pull request can be opened against it via the Github API
+// so that a pull request can be opened against it via the Github API. Note this step requires http.BasicAuth to perform
+// so I log identify myself to Github via my username and my Github personal access token as my password
 func pushLocalBranch(localRepository *git.Repository) error {
 	// Push the changes to the remote repo
 	po := &git.PushOptions{
@@ -155,8 +157,7 @@ func pushLocalBranch(localRepository *git.Repository) error {
 	return nil
 }
 
-// Attempt to open a pull request via the Github API, of the supplied branch specific to this tool, against the main
-// branch for the remote origin
+// Attempt to open a pull request via the Github API, of the branch containing the badge changes against the master branch
 func openPullRequest(GithubClient *github.Client, branch string) error {
 
 	t := time.Now()
@@ -165,8 +166,7 @@ func openPullRequest(GithubClient *github.Client, branch string) error {
 	pullRequestTitle := fmt.Sprintf("Update Project Wren Badge for %s", month)
 	pullRequestDescription := fmt.Sprintf("Swap in the latest badge with the stats for %s", month)
 
-	repoOwner := "zackproser"
-	repoName := "zackproser"
+	repoName := os.Getenv("REPO_OWNER")
 
 	// Configure pull request options that the Github client accepts when making calls to open new pull requests
 	newPR := &github.NewPullRequest{
@@ -178,7 +178,7 @@ func openPullRequest(GithubClient *github.Client, branch string) error {
 	}
 
 	// Make a pull request via the Github API
-	pr, _, err := GithubClient.PullRequests.Create(context.Background(), repoOwner, repoName, newPR)
+	pr, _, err := GithubClient.PullRequests.Create(context.Background(), repoName, repoName, newPR)
 
 	if err != nil {
 		return err
@@ -189,6 +189,8 @@ func openPullRequest(GithubClient *github.Client, branch string) error {
 	return nil
 }
 
+// updateBadgeContents will intentionally overwrite the existing /img/carbon-wren.png badge that exists in the locally checked out repository
+// by copying over it the local version of the updated badge image
 func updateBadgeContents(repositoryDir string) error {
 
 	badgePath := path.Join(repositoryDir, "img", "carbon-wren.png")

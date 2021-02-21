@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+// Upload takes a local sourch path and a remote S3 path and uploads the file at the sourcePath to the destPath in S3
 func Upload(s *session.Session, sourcePath, destPath string) error {
 
 	file, err := os.Open(sourcePath)
@@ -37,6 +38,8 @@ func Upload(s *session.Session, sourcePath, destPath string) error {
 	return err
 }
 
+// uploadHTMLBagdeToS3 takes the modified HTML page and hosts it live via the public S3 bucket so that the HCTI API
+// will be able to fetch it and extract the badge image from it
 func uploadHTMLBadgeToS3() error {
 	s, err := session.NewSession(&aws.Config{Region: aws.String(S3_REGION)})
 	if err != nil {
@@ -44,7 +47,7 @@ func uploadHTMLBadgeToS3() error {
 		return err
 	}
 
-	err = Upload(s, BADGE_LOCAL_PATH, HTML_PAGE_DEST_PATH)
+	err = Upload(s, BADGE_LOCAL_PATH, HTML_PAGE_DEST_S3_PATH)
 	if err != nil {
 		fmt.Printf("Error uploading to S3 %+v\n", err)
 		return err
@@ -52,6 +55,11 @@ func uploadHTMLBadgeToS3() error {
 	return nil
 }
 
+// copyExtractedBadgeImageToS3 takes in the URL that was returned by the HCTI API, where the extracted, updated badge is hosted,
+// and reads then write it to a local file first. Next, it uploads the local file to a special S3 prefix /extracted for
+// safe keeping and sanity checking - even though this S3 hosted badge is not used itself - you could also link to it
+// directly and then just keep running this or a similar function to update it in place if you did not want to go through
+// the hassle of programmatically handling the git / Github operations
 func copyExtractedBadgeImageToS3(resizedImageURL string) error {
 	s, err := session.NewSession(&aws.Config{Region: aws.String(S3_REGION)})
 	if err != nil {

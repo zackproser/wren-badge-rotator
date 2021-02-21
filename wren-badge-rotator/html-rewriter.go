@@ -1,7 +1,43 @@
 package main
 
+import (
+	"bytes"
+	"errors"
+	"io"
+
+	"golang.org/x/net/html"
+)
+
 type BadgeHTML struct {
 	Contents string
+}
+
+// Badge recursively searches the HTML document to find the badge node, which is wrapped in an "a" tag, or link
+func Badge(doc *html.Node) (*html.Node, error) {
+	var badge *html.Node
+	var crawler func(*html.Node)
+	crawler = func(node *html.Node) {
+		if node.Type == html.ElementNode && node.Data == "a" {
+			badge = node
+			return
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			crawler(child)
+		}
+	}
+	crawler(doc)
+	if badge != nil {
+		return badge, nil
+	}
+	return nil, errors.New("Missing <a> in the node tree")
+}
+
+// renderNode converts the supplied html node to a string
+func renderNode(n *html.Node) string {
+	var buf bytes.Buffer
+	w := io.Writer(&buf)
+	html.Render(w, n)
+	return buf.String()
 }
 
 const wrapper = `

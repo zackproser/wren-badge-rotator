@@ -1,110 +1,41 @@
-# wren-badge-rotator
+# Wren Badge Rotator
 
-## Setup process
+[Read the article](https://medium.com/) that provides a deep dive of this repo and the problem it is solving. 
 
-### Local development
+This is an AWS Lambda serverless function that is triggered by a CloudWatch event to run once per month. It updates my Wren.co badge on my Github profile with my latest stats 100% autonomously. 
 
-**Invoking function locally through local API Gateway**
+# Cloudformation
 
-```bash
-sam local start-api
-```
+This app is defined via Cloudformation in `template.yml` which creates: 
+* The S3 bucket that will host the HTML page containing the modified badge 
+* The S3 public access bucket policy allowing uploaded objects to be read by anonymous principals
+* The AWS Lambda function that handles all the logic for: 
+	* Fetching my current badge's raw HTML 
+	* Translating its styling on the fly via Golang templates and modified CSS rules 
+	* Writing the modified HTML to a page and publishing it via S3
+	* Sending the request to the HCTI API to extract the image found in the HTML page 
+	* Writing the extracted updated badge image locally and pushing it to S3 for safekeeping / debugging
+	* Cloning my Github profile repository, updating its badge, and programmatically opening a Pull Request  
+* The IAM Policy allowing the Lambda function to upload images to the S3 bucket 
 
-If the previous command ran successfully you should now be able to hit the following local endpoint to invoke your function `http://localhost:3000/hello`
+# Pre-requisites 
 
-**SAM CLI** is used to emulate both Lambda and API Gateway locally and uses our `template.yaml` to understand how to bootstrap this environment (runtime, where the source code is, etc.) - The following excerpt is what the CLI will read in order to initialize an API and its routes:
+[Install the AWS-SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html), and export your credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) to your shell via your preferred method. 
 
-```yaml
-...
-Events:
-    HelloWorld:
-        Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-        Properties:
-            Path: /hello
-            Method: get
-```
+# Deployment 
 
-## Packaging and deployment
+`sam build && sam deploy --guided`
 
-AWS Lambda Golang runtime requires a flat folder with the executable generated on build step. SAM will use `CodeUri` property to know where to look up for the application:
+# Configure your Lambda env variables in the Web Console
 
-```yaml
-...
-    FirstFunction:
-        Type: AWS::Serverless::Function
-        Properties:
-            CodeUri: hello_world/
-            ...
-```
+After successfully deploying the stack to AWS, you'll need to go into the Lambda function that was created and set the following environment variables: 
 
-To deploy your application for the first time, run the following in your shell:
+* `GITHUB_OAUTH_TOKEN` - Your Github personal access token that has repo access scope
+* `HCTI_API_USER_ID` - Your hcti.io User ID (create an account)
+* `HCTI_API_KEY` - Your hcti.io API key 
 
-```bash
-sam deploy --guided
-```
+Note that the `S3_BUCKET` and `WREN_USERNAME` env vars are also required by the Lambda function, but they are defined by the `template.yml`'s Lambda Environment property.
 
-The command will package and deploy your application to AWS, with a series of prompts:
+# N.B. 
 
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
-
-You can find your API Gateway Endpoint URL in the output values displayed after deployment.
-
-### Testing
-
-We use `testing` package that is built-in in Golang and you can simply run the following command to run our tests:
-
-```shell
-go test -v ./hello-world/
-```
-# Appendix
-
-### Golang installation
-
-Please ensure Go 1.x (where 'x' is the latest version) is installed as per the instructions on the official golang website: https://golang.org/doc/install
-
-A quickstart way would be to use Homebrew, chocolatey or your linux package manager.
-
-#### Homebrew (Mac)
-
-Issue the following command from the terminal:
-
-```shell
-brew install golang
-```
-
-If it's already installed, run the following command to ensure it's the latest version:
-
-```shell
-brew update
-brew upgrade golang
-```
-
-#### Chocolatey (Windows)
-
-Issue the following command from the powershell:
-
-```shell
-choco install golang
-```
-
-If it's already installed, run the following command to ensure it's the latest version:
-
-```shell
-choco upgrade golang
-```
-
-## Bringing to the next level
-
-Here are a few ideas that you can use to get more acquainted as to how this overall process works:
-
-* Create an additional API resource (e.g. /hello/{proxy+}) and return the name requested through this new path
-* Update unit test to capture that
-* Package & Deploy
-
-Next, you can use the following resources to know more about beyond hello world samples and how others structure their Serverless applications:
-
-* [AWS Serverless Application Repository](https://aws.amazon.com/serverless/serverlessrepo/)
+If you wanted to use this yourself and run it - you'll need to make note of where I have environment variables defined (in the `template.yml` that are specific to my use-case). You'll want to update those to point at your own repo and your own Wren.co username
