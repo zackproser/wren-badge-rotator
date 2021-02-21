@@ -6,7 +6,7 @@ Description: >
 Resources:
   WrenBadgeImageResizeBucket:
     Type: AWS::S3::Bucket
-
+  # Attach a bucket policy that allows all objects uploaded to it to be read by anonymous principals (such as the HCTI API's screenshotting / scraping bots)
   WrenBadgeImageResizeBucketAllowPublicReadPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -38,6 +38,7 @@ Resources:
         SimpleCWEEvent:
           Type: Schedule
           Properties:
+            # Run the lambda function once, on the second day of every month, at 8am
             Schedule: cron(0 8 2 * ? *)
       Environment:
         Variables:
@@ -55,6 +56,7 @@ Resources:
           - Effect: Allow
             Action:
               - 's3:*'
+            # Grant the Lambda function access to every file in the S3 bucket used for hosting the modified badge HTML and the final processed badge image
             Resource:
               - !Join
                 - ''
